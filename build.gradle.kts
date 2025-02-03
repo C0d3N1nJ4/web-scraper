@@ -9,7 +9,7 @@ version = "0.0.1-SNAPSHOT"
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(23)
+        languageVersion = JavaLanguageVersion.of(21)
     }
 }
 
@@ -35,3 +35,23 @@ dependencies {
 tasks.withType<Test> {
     useJUnitPlatform()
 }
+
+tasks.withType<JavaCompile> {
+    options.compilerArgs.add("--enable-preview")
+}
+
+tasks.withType<Test> {
+    jvmArgs = (jvmArgs ?: mutableListOf()).toMutableList().apply {
+        add("--enable-preview")
+    }
+}
+
+tasks.withType<Test>().configureEach {
+    jvmArgs = (jvmArgs ?: mutableListOf()).toMutableList().apply {
+        add("--enable-preview")
+    }
+}
+
+
+
+

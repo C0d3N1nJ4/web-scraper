@@ -8,29 +8,37 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.stream.Collectors;
+import java.util.concurrent.StructuredTaskScope;
 
 @Service
 @Slf4j
 public class ScraperService {
 
-    private final HttpClient httpClient = HttpClient.newHttpClient();
+    private final HttpClient httpClient;
+
+    public ScraperService(HttpClient httpClient) {
+        this.httpClient = httpClient;
+    }
 
     public List<String> scrapeWebsites(List<String> urls) {
-        try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
-            return urls.stream()
-                    .map(url -> executor.submit(() -> fetchContent(url)))
-                    .map(future -> {
-                        try {
-                            return future.get();
-                        } catch (Exception e) {
-                            log.error("Error occurred while fetching content", e);
-                            return null;
-                        }
-                    })
-                    .collect(Collectors.toList());
+        if (urls.isEmpty()) {
+            return List.of();
+        }
+
+        try (var scope = new StructuredTaskScope.ShutdownOnFailure()) {
+            List<StructuredTaskScope.Subtask<String>> tasks = urls.stream()
+                    .map(url -> scope.fork(() -> fetchContent(url)))
+                    .toList();
+
+            scope.join();
+            scope.throwIfFailed();
+
+            return tasks.stream()
+                    .map(StructuredTaskScope.Subtask::get)
+                    .toList();
+        } catch (Exception e) {
+            log.error("Structured concurrency error: {}", e.getMessage(), e);
+            return List.of("Error occurred during scraping");
         }
     }
 
@@ -43,11 +51,10 @@ public class ScraperService {
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             log.info("Fetched: {} ({} chars)", url, response.body().length());
-            return response.body().substring(0, Math.min(200, response.body().length())) + "..."; // Limit output
+            return STR."\{response.body().substring(0, Math.min(200, response.body().length()))}..."; // Limit output
         } catch (Exception e) {
             log.error("Failed to fetch {}: {}", url, e.getMessage());
-            return "Error fetching " + url;
+            return STR."Error fetching content from \{url}";
         }
     }
-
 }
