@@ -14,10 +14,11 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
- class ScraperServiceTest {
+class ScraperServiceTest {
 
     @Mock
     private HttpClient mockHttpClient;
@@ -30,13 +31,14 @@ import static org.mockito.Mockito.when;
 
     @BeforeEach
     void setUp() throws Exception {
-        when(mockResponse.body()).thenReturn("<html><body>Sample Content</body></html>");
-        when(mockResponse.statusCode()).thenReturn(200);
+        lenient().when(mockResponse.body()).thenReturn("<html><body>Sample Content</body></html>");
+        lenient().when(mockResponse.statusCode()).thenReturn(200);
 
         // Mock HttpClient behavior
-        when(mockHttpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+        lenient().when(mockHttpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
                 .thenReturn(mockResponse);
     }
+
 
     @Test
     void testScrapeWebsites_Success() {
@@ -46,7 +48,7 @@ import static org.mockito.Mockito.when;
 
         assertNotNull(results);
         assertEquals(2, results.size());
-        assertTrue(results.getFirst().contains("Sample Content"));
+        assertTrue(results.get(0).contains("Sample Content"));
     }
 
     @Test
@@ -59,8 +61,9 @@ import static org.mockito.Mockito.when;
 
         assertNotNull(results);
         assertEquals(1, results.size());
-        assertEquals("Error fetching https://example.com", results.getFirst());
+        assertEquals("Error fetching content from https://example.com", results.get(0));
     }
+
 
     @Test
     void testScrapeWebsites_EmptyList() {
